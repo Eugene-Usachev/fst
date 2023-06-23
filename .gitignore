@@ -8,7 +8,7 @@
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
+# Test binary, built with `go benchmarks -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
@@ -23,3 +23,7 @@ go.work
 machinet.conf
 
 /.idea
+
+Dockerfile
+Dockerfile_bench
+Dockerfile_test

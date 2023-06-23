@@ -18,25 +18,64 @@ associated with token generation and parsing.
 To demonstrate the performance benefits of fst, we conducted a series of tests using various tokens sizes.
 The results are as follows:
 
-parsing speed (less is better):
+<h2>Parse</h2>
 
-![Image Description](images/parse_speed.jpg)
+<h3>speed in ns/op (less is better)</h3>
 
-generate speed (less is better):
+![Image Description](benchmarks/images/parse_speed_ns.jpg)
 
-![Image Description](images/gen_speed.jpg)
+<h3>speed in total repetitions (more is better)</h3>
 
-parsing memory (less is better):
-![Image Description](images/parse_memory.jpg)
+![Image Description](benchmarks/images/parse_speed_total.jpg)
 
-generate memory (less is better):
-![Image Description](images/gen_memory.jpg)
+<h3>memory in bytes/op (less is better)</h3>
 
-parallel parsing speed (less is better):
-![Image Description](images/parse_speed_parallel.jpg)
+![Image Description](benchmarks/images/parse_memory.jpg)
 
-parallel generate speed (less is better):
-![Image Description](images/gen_speed_parallel.jpg)
+<h3>allocs in allocs/op (less is better)</h3>
+
+![Image Description](benchmarks/images/parse_allocs.jpg)
+
+<h2>Generate</h2>
+
+<h3>speed in ns/op (less is better)</h3>
+
+![Image Description](benchmarks/images/gen_speed_ns.jpg)
+
+<h3>speed in total repetitions (more is better)</h3>
+
+![Image Description](benchmarks/images/gen_speed_total.jpg)
+
+<h3>memory in bytes/op (less is better)</h3>
+
+![Image Description](benchmarks/images/gen_memory.jpg)
+
+<h3>allocs in allocs/op (less is better)</h3>
+
+![Image Description](benchmarks/images/gen_allocs.jpg)
+
+<h2>Parallel parse</h2>
+
+<h3>speed in ns/op (less is better)</h3>
+
+![Image Description](benchmarks/images/parallel_parse_ns.jpg)
+
+<h3>speed in total repetitions (more is better)</h3>
+
+![Image Description](benchmarks/images/parallel_parse_total.jpg)
+
+<h2>Parallel generate</h2>
+
+<h3>speed in ns/op (less is better)</h3>
+
+![Image Description](benchmarks/images/parallel_gen_ns.jpg)
+
+<h3>speed in total repetitions (more is better)</h3>
+
+![Image Description](benchmarks/images/parallel_gen_total.jpg)
+
+
+To learn more about benchmarks, you can visit the `benchmarks` folder. There you will find the source code and data in the form of a table.
 
 ## Installation
 

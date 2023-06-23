@@ -119,16 +119,16 @@ func (c *Converter) NewTokenWithExpire(value []byte) string {
 }
 
 var (
-	invalidTokenFormat = errors.New("Invalid token format")
-	invalidSignature   = errors.New("Invalid signature")
-	tokenExpired       = errors.New("Token expired")
+	InvalidTokenFormat = errors.New("Invalid token format")
+	InvalidSignature   = errors.New("Invalid signature")
+	TokenExpired       = errors.New("Token expired")
 )
 
 func (c *Converter) ParseToken(token string) ([]byte, error) {
 	components := strings.Split(token, ".")
 
 	if len(components) != 2 {
-		return nil, invalidTokenFormat
+		return nil, InvalidTokenFormat
 	}
 
 	mac := c.hmacPool.Get().(hash.Hash)
@@ -149,7 +149,7 @@ func (c *Converter) ParseToken(token string) ([]byte, error) {
 	c.hmacPool.Put(mac)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, invalidSignature
+		return nil, InvalidSignature
 	}
 
 	return base64.RawURLEncoding.DecodeString(components[0])
@@ -159,7 +159,7 @@ func (c *Converter) ParseTokenWithExpire(token string) ([]byte, error) {
 	components := strings.Split(token, ".")
 
 	if len(components) != 3 {
-		return nil, invalidTokenFormat
+		return nil, InvalidTokenFormat
 	}
 
 	mac := c.hmacPool.Get().(hash.Hash)
@@ -181,7 +181,7 @@ func (c *Converter) ParseTokenWithExpire(token string) ([]byte, error) {
 	c.hmacPool.Put(mac)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, invalidSignature
+		return nil, InvalidSignature
 	}
 
 	expiration, err := strconv.ParseInt(components[2], 10, 64)
@@ -190,7 +190,7 @@ func (c *Converter) ParseTokenWithExpire(token string) ([]byte, error) {
 	}
 
 	if c.timeNow.Load() > expiration {
-		return nil, tokenExpired
+		return nil, TokenExpired
 	}
 
 	return base64.RawURLEncoding.DecodeString(components[0])
