@@ -14,11 +14,11 @@ func TestNewConverter(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 	if converter == nil {
 		t.Error("Converter is nil")
@@ -33,11 +33,11 @@ func TestConverter_NewToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -54,11 +54,11 @@ func TestConverter_ParseToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -83,11 +83,11 @@ func TestConverter_NewTokenWithExpire(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewTokenWithExpire([]byte(`token`))
@@ -104,11 +104,11 @@ func TestConverter_ParseTokenWithExpire(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewTokenWithExpire([]byte(`token`))
@@ -134,11 +134,11 @@ func TestConverter_ExpiredToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     nil,
-		ExpireTime:  time.Second * 1,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Second * 1,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewTokenWithExpire([]byte(`token`))
@@ -166,11 +166,11 @@ func TestConverter_Postfix(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     []byte(`postfix`),
-		ExpireTime:  time.Minute * 5,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        []byte(`postfix`),
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -196,11 +196,11 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:   []byte(`secret`),
-		Postfix:     []byte(`postfix`),
-		ExpireTime:  time.Second * 1,
-		HashType:    sha256.New,
-		DisableLogs: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        []byte(`postfix`),
+		ExpirationTime: time.Second * 1,
+		HashType:       sha256.New,
+		DisableLogs:    true,
 	})
 
 	token := converter.NewTokenWithExpire([]byte(`token`))
