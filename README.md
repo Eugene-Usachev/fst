@@ -93,7 +93,7 @@ First you need to create a `Converter'. You can do it like this
 converter := fst.NewConverter(&fst.ConverterConfig{
     SecretKey:   []byte(`secret`),
     Postfix:     nil,
-    ExpireTime:  time.Minute * 5,
+    ExpirationTime:  time.Minute * 5,
     HashType:    sha256.New,
     DisableLogs: false,
 })
