@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"github.com/Eugene-Usachev/fastbytes"
 	"hash"
 	"strconv"
 	"strings"
@@ -22,13 +23,9 @@ import (
 //
 // hashType is the hash function used to sign the token.
 //
-// timeBeforeExpire is the lifetime of the token.
+// timeBeforeExpire is the lifetime of the token. By default, it is -1
 //
 // hmacPool and expirationTime and timeNow are needed to improve performance.
-//
-// NewToken is the function used to generate the token.
-//
-// ParseToken is the function used to parse the token.
 type Converter struct {
 	timeNow          atomic.Int64
 	expirationTime   atomic.Value
@@ -50,11 +47,9 @@ type Converter struct {
 //
 // Postfix is the postfix to add to the token to more secure the token.
 //
-// ExpirationTime is the expiration time of the token.
+// ExpirationTime is the expiration time of the token. It is -1 by default and will not expire.
 //
 // HashType is the hash function used to sign the token.
-//
-// WithExpirationTime is the flag to enable expiration time. By default, it is disabled.
 type ConverterConfig struct {
 	// SecretKey is the secret used to sign the token.
 	SecretKey []byte
@@ -77,7 +72,7 @@ type ConverterConfig struct {
 //	     Postfix:        nil,
 //	     ExpirationTime: time.Minute * 5,
 //	     HashType:       sha256.New,
-//	     WithExpirationTime: true,
+//	     DisableLogs:    false,
 //	 })
 func NewConverter(cfg *ConverterConfig) *Converter {
 	if !cfg.WithExpirationTime {
@@ -140,7 +135,7 @@ func (c *Converter) newToken(value []byte) string {
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write([]byte(payloadBase64))
+	mac.Write(fastbytes.S2B(payloadBase64))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -157,7 +152,7 @@ func (c *Converter) newTokenWithExpire(value []byte) string {
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write([]byte(payloadBase64))
+	mac.Write(fastbytes.S2B(payloadBase64))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -174,7 +169,7 @@ func (c *Converter) newTokenWithPostfix(value []byte) string {
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append([]byte(payloadBase64), c.postfix...))
+	mac.Write(append(fastbytes.S2B(payloadBase64), c.postfix...))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -191,7 +186,7 @@ func (c *Converter) newTokenWithExpireAndPostfix(value []byte) string {
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append([]byte(payloadBase64), c.postfix...))
+	mac.Write(append(fastbytes.S2B(payloadBase64), c.postfix...))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -216,7 +211,7 @@ func (c *Converter) parseToken(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write([]byte(components[0]))
+	mac.Write(fastbytes.S2B(components[0]))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {
@@ -243,7 +238,7 @@ func (c *Converter) parseTokenWithExpire(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write([]byte(components[0]))
+	mac.Write(fastbytes.S2B(components[0]))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {
@@ -279,7 +274,7 @@ func (c *Converter) parseTokenWithPostfix(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append([]byte(components[0]), c.postfix...))
+	mac.Write(append(fastbytes.S2B(components[0]), c.postfix...))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {
@@ -306,7 +301,7 @@ func (c *Converter) parseTokenWithExpireAndPostfix(token string) ([]byte, error)
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append([]byte(components[0]), c.postfix...))
+	mac.Write(append(fastbytes.S2B(components[0]), c.postfix...))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {

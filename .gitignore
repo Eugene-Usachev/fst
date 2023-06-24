@@ -27,3 +27,6 @@ machinet.conf
 Dockerfile
 Dockerfile_bench
 Dockerfile_test
+
+/benchmarks/v2
+/benchmarks/bench_versions_test.go
