@@ -1,4 +1,4 @@
-//Package fst is a high-performance, low-memory library for generating and parsing Fast Signed Tokens (FST). FST provides an alternative to JSON-based tokens and allows you to store any information that can be represented as []byte. You can use FST for the same purposes as JWT.
+// Package fst is a high-performance, low-memory library for generating and parsing Fast Signed Tokens (FST). FST provides an alternative to JSON-based tokens and allows you to store any information that can be represented as []byte. You can use FST for the same purposes as JWT.
 package fst
 
 import (
@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"hash"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,6 +25,10 @@ import (
 // timeBeforeExpire is the lifetime of the token.
 //
 // hmacPool and expirationTime and timeNow are needed to improve performance.
+//
+// NewToken is the function used to generate the token.
+//
+// ParseToken is the function used to parse the token.
 type Converter struct {
 	timeNow          atomic.Int64
 	expirationTime   atomic.Value
@@ -36,6 +39,9 @@ type Converter struct {
 
 	hmacPool sync.Pool
 	hashType hash.Hash
+
+	NewToken   func([]byte) string
+	ParseToken func(string) ([]byte, error)
 }
 
 // ConverterConfig represents the configuration options for creating a new Converter.
@@ -48,7 +54,7 @@ type Converter struct {
 //
 // HashType is the hash function used to sign the token.
 //
-// DisableLogs is a flag to disable logs. Be better to disable logs in production but use it for development. DisableLogs = false will not slow down the program.
+// WithExpirationTime is the flag to enable expiration time. By default, it is disabled.
 type ConverterConfig struct {
 	// SecretKey is the secret used to sign the token.
 	SecretKey []byte
@@ -59,8 +65,7 @@ type ConverterConfig struct {
 	// HashType is the hash function used to sign the token.
 	HashType func() hash.Hash
 
-	// DisableLogs is a flag to disable logs. Be better to disable logs in production but use it for development. DisableLogs = false will not slow down the program.
-	DisableLogs bool
+	WithExpirationTime bool
 }
 
 // NewConverter creates a new instance of the Converter based on the provided fst.ConverterConfig.
@@ -72,20 +77,14 @@ type ConverterConfig struct {
 //	     Postfix:        nil,
 //	     ExpirationTime: time.Minute * 5,
 //	     HashType:       sha256.New,
-//	     DisableLogs:    false,
+//	     WithExpirationTime: true,
 //	 })
 func NewConverter(cfg *ConverterConfig) *Converter {
-	if cfg.ExpirationTime == 0 {
-		if !cfg.DisableLogs {
-			log.Println(`[Warning] Passed empty ExpirationTime for Converter! Set to 5 minutes by default.`)
-		}
-		cfg.ExpirationTime = 5 * time.Minute
+	if !cfg.WithExpirationTime {
+		cfg.ExpirationTime = -1
 	}
 	if cfg.HashType == nil {
 		cfg.HashType = sha256.New
-		if !cfg.DisableLogs {
-			log.Println(`[Warning] Passed empty HashType for Converter! Set to sha256.New by default.`)
-		}
 	}
 	converter := &Converter{
 		secretKey:        cfg.SecretKey,
@@ -99,41 +98,49 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 		},
 	}
 
-	converter.timeNow.Store(time.Now().Unix())
-	converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
-
-	go func() {
-		var ex64 int64
-		for {
-			time.Sleep(1 * time.Second)
-			converter.timeNow.Add(1)
-			ex64, _ = strconv.ParseInt(converter.expirationTime.Load().(string), 10, 64)
-			ex64++
-			converter.expirationTime.Store(strconv.FormatInt(ex64, 10))
+	if cfg.ExpirationTime != -1 {
+		if cfg.Postfix == nil {
+			converter.NewToken = converter.newTokenWithExpire
+			converter.ParseToken = converter.parseTokenWithExpire
+		} else {
+			converter.NewToken = converter.newTokenWithExpireAndPostfix
+			converter.ParseToken = converter.parseTokenWithExpireAndPostfix
 		}
-	}()
+
+		converter.timeNow.Store(time.Now().Unix())
+		converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
+
+		go func() {
+			var ex64 int64
+			for {
+				time.Sleep(1 * time.Second)
+				converter.timeNow.Add(1)
+				ex64, _ = strconv.ParseInt(converter.expirationTime.Load().(string), 10, 64)
+				ex64++
+				converter.expirationTime.Store(strconv.FormatInt(ex64, 10))
+			}
+		}()
+	} else {
+		if cfg.Postfix == nil {
+			converter.NewToken = converter.newToken
+			converter.ParseToken = converter.parseToken
+		} else {
+			converter.NewToken = converter.newTokenWithPostfix
+			converter.ParseToken = converter.parseTokenWithPostfix
+		}
+	}
+
 	return converter
 }
 
-// NewToken generates a new token based on the provided value.
-//
-// Example of the usage:
-//
-// converter := fst.NewConverter(<your fst.ConverterConfig>)
-//
-// token, err := converter.NewToken(<value>)
-func (c *Converter) NewToken(value []byte) string {
+func (c *Converter) newToken(value []byte) string {
 	// Create the payload
 	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	if c.postfix != nil {
-		mac.Write(append([]byte(payloadBase64), c.postfix...))
-	} else {
-		mac.Write([]byte(payloadBase64))
-	}
+	mac.Write([]byte(payloadBase64))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -143,25 +150,48 @@ func (c *Converter) NewToken(value []byte) string {
 	return strings.Join([]string{payloadBase64, signatureBase64}, ".")
 }
 
-// NewTokenWithExpire generates a new token with expiration time based on the provided value.
-//
-// Example of the usage:
-//
-// converter := fst.NewConverter(<your fst.ConverterConfig>)
-//
-// token, err := converter.NewTokenWithExpire(<value>)
-func (c *Converter) NewTokenWithExpire(value []byte) string {
+func (c *Converter) newTokenWithExpire(value []byte) string {
 	// Create the payload
 	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	if c.postfix != nil {
-		mac.Write(append([]byte(payloadBase64), c.postfix...))
-	} else {
-		mac.Write([]byte(payloadBase64))
-	}
+	mac.Write([]byte(payloadBase64))
+	signature := mac.Sum(nil)
+
+	c.hmacPool.Put(mac)
+
+	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
+
+	return strings.Join([]string{payloadBase64, signatureBase64, c.expirationTime.Load().(string)}, ".")
+}
+
+func (c *Converter) newTokenWithPostfix(value []byte) string {
+	// Create the payload
+	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
+
+	// Create the signature
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append([]byte(payloadBase64), c.postfix...))
+	signature := mac.Sum(nil)
+
+	c.hmacPool.Put(mac)
+
+	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
+
+	return strings.Join([]string{payloadBase64, signatureBase64}, ".")
+}
+
+func (c *Converter) newTokenWithExpireAndPostfix(value []byte) string {
+	// Create the payload
+	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
+
+	// Create the signature
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append([]byte(payloadBase64), c.postfix...))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
@@ -177,16 +207,7 @@ var (
 	TokenExpired       = errors.New("Token expired")
 )
 
-// ParseToken parses the provided token and returns the decoded value.
-//
-// Warning! If you pass a token that has expiration time, this function will return error and nil value!
-//
-// Example of the usage:
-//
-// token := <some token>
-//
-// value, err := converter.ParseToken(token)
-func (c *Converter) ParseToken(token string) ([]byte, error) {
+func (c *Converter) parseToken(token string) ([]byte, error) {
 	components := strings.Split(token, ".")
 
 	if len(components) != 2 {
@@ -195,11 +216,7 @@ func (c *Converter) ParseToken(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	if c.postfix != nil {
-		mac.Write(append([]byte(components[0]), c.postfix...))
-	} else {
-		mac.Write([]byte(components[0]))
-	}
+	mac.Write([]byte(components[0]))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {
@@ -217,16 +234,7 @@ func (c *Converter) ParseToken(token string) ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(components[0])
 }
 
-// ParseTokenWithExpire parses the provided token with expiration time and returns the decoded value.
-//
-// Warning! If you pass a token that has no expiration time, this function will return error and nil value!
-//
-// Example of the usage:
-//
-// token := <some token that has expiration time>
-//
-// value, err := converter.ParseTokenWithExpire(token)
-func (c *Converter) ParseTokenWithExpire(token string) ([]byte, error) {
+func (c *Converter) parseTokenWithExpire(token string) ([]byte, error) {
 	components := strings.Split(token, ".")
 
 	if len(components) != 3 {
@@ -235,12 +243,70 @@ func (c *Converter) ParseTokenWithExpire(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
+	mac.Write([]byte(components[0]))
 
-	if c.postfix != nil {
-		mac.Write(append([]byte(components[0]), c.postfix...))
-	} else {
-		mac.Write([]byte(components[0]))
+	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
+	if err != nil {
+		return nil, err
 	}
+
+	actualSignature := mac.Sum(nil)
+
+	c.hmacPool.Put(mac)
+
+	if !hmac.Equal(expectedSignature, actualSignature) {
+		return nil, InvalidSignature
+	}
+
+	expiration, err := strconv.ParseInt(components[2], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.timeNow.Load() > expiration {
+		return nil, TokenExpired
+	}
+
+	return base64.RawURLEncoding.DecodeString(components[0])
+}
+
+func (c *Converter) parseTokenWithPostfix(token string) ([]byte, error) {
+	components := strings.Split(token, ".")
+
+	if len(components) != 2 {
+		return nil, InvalidTokenFormat
+	}
+
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append([]byte(components[0]), c.postfix...))
+
+	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
+	if err != nil {
+		return nil, err
+	}
+
+	actualSignature := mac.Sum(nil)
+
+	c.hmacPool.Put(mac)
+
+	if !hmac.Equal(expectedSignature, actualSignature) {
+		return nil, InvalidSignature
+	}
+
+	return base64.RawURLEncoding.DecodeString(components[0])
+}
+
+func (c *Converter) parseTokenWithExpireAndPostfix(token string) ([]byte, error) {
+	components := strings.Split(token, ".")
+
+	if len(components) != 3 {
+		return nil, InvalidTokenFormat
+	}
+
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append([]byte(components[0]), c.postfix...))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {

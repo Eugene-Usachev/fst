@@ -14,14 +14,39 @@ func TestNewConverter(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
+		SecretKey: []byte(`secret`),
+	})
+	if converter == nil {
+		t.Error("Converter is nil")
+	}
+
+	converter = NewConverter(&ConverterConfig{
+		SecretKey: []byte(`secret`),
+		Postfix:   []byte(`postfix`),
+		HashType:  sha256.New,
+	})
+	if converter == nil {
+		t.Error("Converter with postfix is nil")
+	}
+
+	converter = NewConverter(&ConverterConfig{
 		SecretKey:      []byte(`secret`),
 		Postfix:        nil,
 		ExpirationTime: time.Minute * 5,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 	if converter == nil {
-		t.Error("Converter is nil")
+		t.Error("Converter with expiration time is nil")
+	}
+
+	converter = NewConverter(&ConverterConfig{
+		SecretKey:      []byte(`secret`),
+		Postfix:        []byte(`postfix`),
+		ExpirationTime: time.Minute * 5,
+		HashType:       sha256.New,
+	})
+	if converter == nil {
+		t.Error("Converter with postfix and expiration time is nil")
 	}
 }
 
@@ -33,11 +58,7 @@ func TestConverter_NewToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:      []byte(`secret`),
-		Postfix:        nil,
-		ExpirationTime: time.Minute * 5,
-		HashType:       sha256.New,
-		DisableLogs:    true,
+		SecretKey: []byte(`secret`),
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -54,11 +75,7 @@ func TestConverter_ParseToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:      []byte(`secret`),
-		Postfix:        nil,
-		ExpirationTime: time.Minute * 5,
-		HashType:       sha256.New,
-		DisableLogs:    true,
+		SecretKey: []byte(`secret`),
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -87,10 +104,9 @@ func TestConverter_NewTokenWithExpire(t *testing.T) {
 		Postfix:        nil,
 		ExpirationTime: time.Minute * 5,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 
-	token := converter.NewTokenWithExpire([]byte(`token`))
+	token := converter.NewToken([]byte(`token`))
 	if token == "" || len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
@@ -108,15 +124,14 @@ func TestConverter_ParseTokenWithExpire(t *testing.T) {
 		Postfix:        nil,
 		ExpirationTime: time.Minute * 5,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 
-	token := converter.NewTokenWithExpire([]byte(`token`))
+	token := converter.NewToken([]byte(`token`))
 	if token == "" || len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
 
-	value, err := converter.ParseTokenWithExpire(token)
+	value, err := converter.ParseToken(token)
 	if err != nil {
 		t.Error("Token with expire time parse err: ", err)
 	}
@@ -138,17 +153,16 @@ func TestConverter_ExpiredToken(t *testing.T) {
 		Postfix:        nil,
 		ExpirationTime: time.Second * 1,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 
-	token := converter.NewTokenWithExpire([]byte(`token`))
+	token := converter.NewToken([]byte(`token`))
 	if token == "" || len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
 
 	time.Sleep(time.Second * 3)
 
-	_, err := converter.ParseTokenWithExpire(token)
+	_, err := converter.ParseToken(token)
 	if err == nil {
 		t.Error("Token with expire time parse err: ", "token is not expired!")
 	} else {
@@ -170,7 +184,6 @@ func TestConverter_Postfix(t *testing.T) {
 		Postfix:        []byte(`postfix`),
 		ExpirationTime: time.Minute * 5,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -200,17 +213,16 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 		Postfix:        []byte(`postfix`),
 		ExpirationTime: time.Second * 1,
 		HashType:       sha256.New,
-		DisableLogs:    true,
 	})
 
-	token := converter.NewTokenWithExpire([]byte(`token`))
+	token := converter.NewToken([]byte(`token`))
 	if token == "" || len(token) == 0 {
 		t.Error("Token with expire time and postfix is nil")
 	}
 
 	time.Sleep(time.Second * 3)
 
-	_, err := converter.ParseTokenWithExpire(token)
+	_, err := converter.ParseToken(token)
 	if err == nil {
 		t.Error("Token with expire time and postfix parse err: ", "token is not expired!")
 	} else {

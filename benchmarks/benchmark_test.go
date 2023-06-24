@@ -5,12 +5,10 @@ import (
 	v4 "benches/golangJwt"
 	v3 "benches/jwt"
 	v2 "benches/jwt-go"
-	"crypto/sha256"
 	"github.com/Eugene-Usachev/fst"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 var (
@@ -26,16 +24,10 @@ var (
 	id    = uint(1)
 
 	fstConverterA = fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		HashType:   sha256.New,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
+		SecretKey: bkey1,
 	})
 	fstConverterR = fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
-		HashType:   sha256.New,
+		SecretKey: bkey1,
 	})
 
 	message1 = func() string {
@@ -92,10 +84,7 @@ func BenchmarkUintGen_JWT(b *testing.B) {
 
 func BenchmarkUintGen_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		HashType:   sha256.New,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
+		SecretKey: bkey1,
 	})
 	bid := U2B(id)
 	b.ResetTimer()
@@ -141,10 +130,7 @@ func BenchmarkBigStringGen_JWT(b *testing.B) {
 
 func BenchmarkBigStringGen_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		HashType:   sha256.New,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
+		SecretKey: bkey1,
 	})
 	bmessage := []byte(message1)
 	b.ResetTimer()
@@ -190,10 +176,7 @@ func BenchmarkUintParse_JWT(b *testing.B) {
 
 func BenchmarkUintParse_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
-		HashType:   sha256.New,
+		SecretKey: bkey1,
 	})
 	b.ResetTimer()
 
@@ -238,10 +221,7 @@ func BenchmarkBigStringParse_JWT(b *testing.B) {
 
 func BenchmarkBigStringParse_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
-		HashType:   sha256.New,
+		SecretKey: bkey1,
 	})
 	b.ResetTimer()
 
@@ -298,10 +278,7 @@ func BenchmarkUintGen_JWT_ASYNC(b *testing.B) {
 
 func BenchmarkUintGen_FST_ASYNC(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		HashType:   sha256.New,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
+		SecretKey: bkey1,
 	})
 	bid := U2B(id)
 	b.ResetTimer()
@@ -361,10 +338,7 @@ func BenchmarkBigStringGen_JWT_ASYNC(b *testing.B) {
 
 func BenchmarkBigStringGen_FST_ASYNC(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		HashType:   sha256.New,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
+		SecretKey: bkey1,
 	})
 	bmessage := []byte(message1)
 	b.ResetTimer()
@@ -424,10 +398,7 @@ func BenchmarkUintParse_JWT_ASYNC(b *testing.B) {
 
 func BenchmarkUintParse_FST_ASYNC(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
-		HashType:   sha256.New,
+		SecretKey: bkey1,
 	})
 	b.ResetTimer()
 	b.SetParallelism(128)
@@ -486,10 +457,7 @@ func BenchmarkBigStringParse_JWT_ASYNC(b *testing.B) {
 
 func BenchmarkBigStringParse_FST_ASYNC(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:  bkey1,
-		Postfix:    nil,
-		ExpireTime: time.Minute * 5,
-		HashType:   sha256.New,
+		SecretKey: bkey1,
 	})
 	b.ResetTimer()
 	b.SetParallelism(128)
