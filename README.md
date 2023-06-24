@@ -93,26 +93,32 @@ First you need to create a `Converter'. You can do it like this
 converter := fst.NewConverter(&fst.ConverterConfig{
     SecretKey:   []byte(`secret`),
     Postfix:     nil,
-    ExpirationTime:  time.Minute * 5,
     HashType:    sha256.New,
-    DisableLogs: false,
 })
 ```
 
-Then you can create a token using the `NewToken` or `NewTokenWithExpire` functions.
+Then you can create a token using the `NewToken`
 
 ```go
 token := converter.NewToken([]byte(`token`))
-// or create token with set expire time
-tokenWithEx := converter.NewTokenWithExpire([]byte(`token`))
 ```
 
-To parse tokens, you can use the `ParseToken` or `ParseTokenWithExpire` functions.
+To parse tokens, you can use the `ParseToken`
 
 ```go
 value, err := converter.ParseToken(token)
-// or parse token with set an expiry time
-value, err = converter.ParseTokenWithExpire(tokenWithEx)
+```
+
+If you want to set expiration time create new converter
+
+```go
+converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
+    SecretKey:          []byte(`secret`),
+    Postfix:            nil,
+    ExpirationTime:     time.Minute * 5,
+    HashType:           sha256.New,
+    WithExpirationTime: true,
+})
 ```
 ## License
 

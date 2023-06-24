@@ -9,11 +9,8 @@ import (
 
 func main() {
 	converter := fst.NewConverter(&fst.ConverterConfig{
-		SecretKey:      []byte(`secret`),
-		Postfix:        nil,
-		ExpirationTime: time.Minute * 5,
-		HashType:       sha256.New,
-		DisableLogs:    false,
+		SecretKey: []byte(`secret`),
+		HashType:  sha256.New,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -25,10 +22,18 @@ func main() {
 	}
 	fmt.Println(string(value))
 
-	tokenWithEx := converter.NewTokenWithExpire([]byte(`token`))
+	converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
+		SecretKey:          []byte(`secret`),
+		Postfix:            nil,
+		ExpirationTime:     time.Minute * 5,
+		HashType:           sha256.New,
+		WithExpirationTime: true,
+	})
+
+	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
 	fmt.Println(tokenWithEx)
 
-	value, err = converter.ParseTokenWithExpire(tokenWithEx)
+	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
 	if err != nil {
 		fmt.Println(err)
 	}
