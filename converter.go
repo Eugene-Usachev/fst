@@ -148,18 +148,19 @@ func (c *Converter) newToken(value []byte) string {
 func (c *Converter) newTokenWithExpire(value []byte) string {
 	// Create the payload
 	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
+	exTime := c.expirationTime.Load().(string)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(fastbytes.S2B(payloadBase64))
+	mac.Write(fastbytes.S2B(payloadBase64 + exTime))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
 
 	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
 
-	return strings.Join([]string{payloadBase64, signatureBase64, c.expirationTime.Load().(string)}, ".")
+	return strings.Join([]string{payloadBase64, signatureBase64, exTime}, ".")
 }
 
 func (c *Converter) newTokenWithPostfix(value []byte) string {
@@ -182,18 +183,19 @@ func (c *Converter) newTokenWithPostfix(value []byte) string {
 func (c *Converter) newTokenWithExpireAndPostfix(value []byte) string {
 	// Create the payload
 	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
+	exTime := c.expirationTime.Load().(string)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append(fastbytes.S2B(payloadBase64), c.postfix...))
+	mac.Write(append(fastbytes.S2B(payloadBase64+exTime), c.postfix...))
 	signature := mac.Sum(nil)
 
 	c.hmacPool.Put(mac)
 
 	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
 
-	return strings.Join([]string{payloadBase64, signatureBase64, c.expirationTime.Load().(string)}, ".")
+	return strings.Join([]string{payloadBase64, signatureBase64, exTime}, ".")
 }
 
 var (
@@ -238,7 +240,7 @@ func (c *Converter) parseTokenWithExpire(token string) ([]byte, error) {
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(fastbytes.S2B(components[0]))
+	mac.Write(fastbytes.S2B(components[0] + components[2]))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {
@@ -301,7 +303,7 @@ func (c *Converter) parseTokenWithExpireAndPostfix(token string) ([]byte, error)
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append(fastbytes.S2B(components[0]), c.postfix...))
+	mac.Write(append(fastbytes.S2B(components[0]+components[2]), c.postfix...))
 
 	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
 	if err != nil {

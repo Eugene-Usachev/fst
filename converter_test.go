@@ -2,6 +2,7 @@ package fst
 
 import (
 	"crypto/sha256"
+	"strings"
 	"testing"
 	"time"
 )
@@ -230,6 +231,93 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 	} else {
 		if err != TokenExpired {
 			t.Error("Token with expire time and postfix parse err: ", err)
+		}
+	}
+}
+
+func TestConverter_SecuredTest(t *testing.T) {
+	defer func() {
+		if pn := recover(); pn != nil {
+			t.Error("panic handled: ", pn)
+		}
+	}()
+
+	converter := NewConverter(&ConverterConfig{
+		SecretKey: []byte(`secret`),
+		Postfix:   []byte(`postfix`),
+		HashType:  sha256.New,
+	})
+
+	token := converter.NewToken([]byte(`token`))
+	if token == "" || len(token) == 0 {
+		t.Error("Token is nil")
+	}
+
+	components := strings.Split(token, ".")
+	components[0] = components[0] + "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+
+	token = strings.Join(components, ".")
+
+	_, err := converter.ParseToken(token)
+	if err == nil {
+		t.Error("Token parse err: ", "token is not secured!")
+	} else {
+		if err != InvalidSignature {
+			t.Error("Token parse err: ", err)
+		}
+	}
+}
+
+func TestConverter_SecuredTestWithExpire(t *testing.T) {
+	defer func() {
+		if pn := recover(); pn != nil {
+			t.Error("panic handled: ", pn)
+		}
+	}()
+
+	converter := NewConverter(&ConverterConfig{
+		SecretKey:          []byte(`secret`),
+		Postfix:            []byte(`postfix`),
+		HashType:           sha256.New,
+		ExpirationTime:     time.Minute * 5,
+		WithExpirationTime: true,
+	})
+
+	token := converter.NewToken([]byte(`token`))
+	if token == "" || len(token) == 0 {
+		t.Error("Token is nil")
+	}
+
+	components := strings.Split(token, ".")
+	components[0] = components[0] + "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+
+	token = strings.Join(components, ".")
+
+	_, err := converter.ParseToken(token)
+	if err == nil {
+		t.Error("Token parse err: ", "token is not secured!")
+	} else {
+		if err != InvalidSignature {
+			t.Error("Token parse err: ", err)
+		}
+	}
+
+	token2 := converter.NewToken([]byte(`token`))
+	if token2 == "" || len(token2) == 0 {
+		t.Error("Token2 is nil")
+	}
+
+	components = strings.Split(token2, ".")
+	components[2] = components[2] + "1"
+
+	token2 = strings.Join(components, ".")
+
+	_, err = converter.ParseToken(token2)
+	if err == nil {
+		t.Error("Token parse err: ", "token is not secured!")
+	} else {
+		if err != InvalidSignature {
+			t.Error("Token parse err: ", err)
 		}
 	}
 }
