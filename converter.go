@@ -106,13 +106,10 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 		converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
 
 		go func() {
-			var ex64 int64
 			for {
 				time.Sleep(1 * time.Second)
-				converter.timeNow.Add(1)
-				ex64, _ = strconv.ParseInt(converter.expirationTime.Load().(string), 10, 64)
-				ex64++
-				converter.expirationTime.Store(strconv.FormatInt(ex64, 10))
+				converter.timeNow.Store(time.Now().Unix())
+				converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
 			}
 		}()
 	} else {
