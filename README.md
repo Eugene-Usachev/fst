@@ -1,6 +1,6 @@
 # fst
 
-fst is a high-performance, low-memory library for generating and parsing Fast Signed Tokens (FST). 
+fst is a high-performance, low-memory library for generating and parsing Fast Signed Token (FST). 
 FST provides an alternative to JSON-based tokens and allows you to store any information that can be 
 represented as `[]byte`. You can use FST for the same purposes as JWT.
 
