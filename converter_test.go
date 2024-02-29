@@ -2,7 +2,7 @@ package fst
 
 import (
 	"crypto/sha256"
-	"strings"
+	"errors"
 	"testing"
 	"time"
 )
@@ -63,7 +63,7 @@ func TestConverter_NewToken(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 }
@@ -80,7 +80,7 @@ func TestConverter_ParseToken(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 
@@ -108,7 +108,7 @@ func TestConverter_NewTokenWithExpire(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
 }
@@ -128,7 +128,7 @@ func TestConverter_ParseTokenWithExpire(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
 
@@ -158,7 +158,7 @@ func TestConverter_ExpiredToken(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token with expire time is nil")
 	}
 
@@ -168,7 +168,7 @@ func TestConverter_ExpiredToken(t *testing.T) {
 	if err == nil {
 		t.Error("Token with expire time parse err: ", "token is not expired!")
 	} else {
-		if err != TokenExpired {
+		if !errors.Is(err, TokenExpired) {
 			t.Error("Token with expire time parse err: ", err)
 		}
 	}
@@ -189,7 +189,7 @@ func TestConverter_Postfix(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 
@@ -219,7 +219,7 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token with expire time and postfix is nil")
 	}
 
@@ -229,7 +229,7 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 	if err == nil {
 		t.Error("Token with expire time and postfix parse err: ", "token is not expired!")
 	} else {
-		if err != TokenExpired {
+		if !errors.Is(err, TokenExpired) {
 			t.Error("Token with expire time and postfix parse err: ", err)
 		}
 	}
@@ -249,20 +249,17 @@ func TestConverter_SecuredTest(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 
-	components := strings.Split(token, ".")
-	components[0] = components[0] + "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
-
-	token = strings.Join(components, ".")
+	token = append(token, 8)
 
 	_, err := converter.ParseToken(token)
 	if err == nil {
 		t.Error("Token parse err: ", "token is not secured!")
 	} else {
-		if err != InvalidSignature {
+		if !errors.Is(err, InvalidSignature) {
 			t.Error("Token parse err: ", err)
 		}
 	}
@@ -284,39 +281,33 @@ func TestConverter_SecuredTestWithExpire(t *testing.T) {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	if token == "" || len(token) == 0 {
+	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 
-	components := strings.Split(token, ".")
-	components[0] = components[0] + "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
-
-	token = strings.Join(components, ".")
+	token = append(token, 12)
 
 	_, err := converter.ParseToken(token)
 	if err == nil {
 		t.Error("Token parse err: ", "token is not secured!")
 	} else {
-		if err != InvalidSignature {
+		if !errors.Is(err, InvalidSignature) {
 			t.Error("Token parse err: ", err)
 		}
 	}
 
 	token2 := converter.NewToken([]byte(`token`))
-	if token2 == "" || len(token2) == 0 {
+	if len(token2) == 0 {
 		t.Error("Token2 is nil")
 	}
 
-	components = strings.Split(token2, ".")
-	components[2] = components[2] + "1"
-
-	token2 = strings.Join(components, ".")
+	token2[0] = 255
 
 	_, err = converter.ParseToken(token2)
 	if err == nil {
 		t.Error("Token parse err: ", "token is not secured!")
 	} else {
-		if err != InvalidSignature {
+		if !errors.Is(err, InvalidSignature) {
 			t.Error("Token parse err: ", err)
 		}
 	}

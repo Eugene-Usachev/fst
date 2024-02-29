@@ -14,13 +14,13 @@ func main() {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	fmt.Println(token)
+	fmt.Println(string(token)) //+XLyVq4BwH3MMLunFEboXU2OvtYAEgnlGsvwWXibAdG0dG9rZW4
 
 	value, err := converter.ParseToken(token)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(string(value))
+	fmt.Println(string(value)) // token
 
 	converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey:          []byte(`secret`),
@@ -31,11 +31,11 @@ func main() {
 	})
 
 	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
-	fmt.Println(tokenWithEx)
+	fmt.Println(string(tokenWithEx)) // ˼�e+il7xQKjrk9p3CwFhDlqQziBfuqrEdgoKK-hKFmyCU0IdG9rZW4
 
 	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(string(value))
+	fmt.Println(string(value)) // token
 }

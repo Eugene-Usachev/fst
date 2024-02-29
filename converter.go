@@ -4,32 +4,60 @@ package fst
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
-	"github.com/Eugene-Usachev/fastbytes"
 	"hash"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+var (
+	// InvalidTokenFormat means that the token is malformed.
+	InvalidTokenFormat = errors.New("Invalid token format")
+	// InvalidSignature means that the token is forged.
+	InvalidSignature = errors.New("Invalid signature")
+	// TokenExpired means that the token is expired.
+	TokenExpired = errors.New("Token expired")
+)
+
 // Converter represents a token converter that can generate and parse Fast Signed Tokens.
 //
-// secretKey is the secret used to sign the token.
+// Example:
 //
-// postfix is the postfix to add to the token to more secure the token.
+//	converter := fst.NewConverter(&fst.ConverterConfig{
+//		SecretKey: []byte(`secret`),
+//		HashType:  sha256.New,
+//	})
 //
-// hashType is the hash function used to sign the token.
+//	token := converter.NewToken([]byte(`token`))
+//	fmt.Println(string(token)) //+XLyVq4BwH3MMLunFEboXU2OvtYAEgnlGsvwWXibAdG0dG9rZW4
 //
-// timeBeforeExpire is the lifetime of the token. By default, it is -1
+//	value, err := converter.ParseToken(token)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(string(value)) // token
 //
-// hmacPool and expirationTime and timeNow are needed to improve performance.
+//	converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
+//		SecretKey:          []byte(`secret`),
+//		Postfix:            nil,
+//		ExpirationTime:     time.Minute * 5,
+//		HashType:           sha256.New,
+//		WithExpirationTime: true,
+//	})
+//
+//	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
+//	fmt.Println(string(tokenWithEx)) // ˼�e+il7xQKjrk9p3CwFhDlqQziBfuqrEdgoKK-hKFmyCU0IdG9rZW4
+//
+//	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(string(value)) // token
 type Converter struct {
-	timeNow          atomic.Int64
-	expirationTime   atomic.Value
-	timeBeforeExpire time.Duration
+	expirationTime      atomic.Int64
+	expirationTimeBytes atomic.Value
+	timeBeforeExpire    int64
 
 	secretKey []byte
 	postfix   []byte
@@ -37,8 +65,13 @@ type Converter struct {
 	hmacPool sync.Pool
 	hashType hash.Hash
 
-	NewToken   func([]byte) string
-	ParseToken func(string) ([]byte, error)
+	// NewToken creates a new FST with the provided value.
+	NewToken func([]byte) []byte
+
+	// ParseToken parses a FST and returns the value.
+	//
+	// It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
+	ParseToken func([]byte) ([]byte, error)
 }
 
 // ConverterConfig represents the configuration options for creating a new Converter.
@@ -84,7 +117,7 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 	converter := &Converter{
 		secretKey:        cfg.SecretKey,
 		postfix:          cfg.Postfix,
-		timeBeforeExpire: cfg.ExpirationTime,
+		timeBeforeExpire: int64(cfg.ExpirationTime.Seconds()),
 
 		hmacPool: sync.Pool{
 			New: func() interface{} {
@@ -102,14 +135,15 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 			converter.ParseToken = converter.parseTokenWithExpireAndPostfix
 		}
 
-		converter.timeNow.Store(time.Now().Unix())
-		converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
-
+		converter.expirationTime.Store(time.Now().Unix())
+		converter.expirationTimeBytes.Store(getBytesForInt64(time.Now().Unix()))
 		go func() {
+			var now int64
 			for {
 				time.Sleep(1 * time.Second)
-				converter.timeNow.Store(time.Now().Unix())
-				converter.expirationTime.Store(strconv.FormatInt(time.Now().Add(converter.timeBeforeExpire).Unix(), 10))
+				now = time.Now().Unix()
+				converter.expirationTime.Store(now)
+				converter.expirationTimeBytes.Store(getBytesForInt64(now))
 			}
 		}()
 	} else {
@@ -125,206 +159,180 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 	return converter
 }
 
-func (c *Converter) newToken(value []byte) string {
-	// Create the payload
-	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
+func (c *Converter) newToken(value []byte) []byte {
+	// Create the signature
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(value)
+	signature := mac.Sum(nil)
+	c.hmacPool.Put(mac)
+
+	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)))
+	token = append(token, getBytesFromLen(len(signature))...)
+	token = append(token, signature...)
+	token = append(token, value...)
+
+	return token
+}
+
+func (c *Converter) newTokenWithExpire(value []byte) []byte {
+	exTime := c.expirationTimeBytes.Load().([]byte)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(fastbytes.S2B(payloadBase64))
+	mac.Write(value)
+	mac.Write(exTime)
 	signature := mac.Sum(nil)
-
 	c.hmacPool.Put(mac)
 
-	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
+	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)+8))
+	token = append(token, exTime...)
+	token = append(token, getBytesFromLen(len(signature))...)
+	token = append(token, signature...)
+	token = append(token, value...)
 
-	return strings.Join([]string{payloadBase64, signatureBase64}, ".")
+	return token
 }
 
-func (c *Converter) newTokenWithExpire(value []byte) string {
-	// Create the payload
-	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
-	exTime := c.expirationTime.Load().(string)
+func (c *Converter) newTokenWithPostfix(value []byte) []byte {
+	// Create the signature
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append(value, c.postfix...))
+	signature := mac.Sum(nil)
+	c.hmacPool.Put(mac)
+
+	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)))
+	token = append(token, getBytesFromLen(len(signature))...)
+	token = append(token, signature...)
+	token = append(token, value...)
+
+	return token
+}
+
+func (c *Converter) newTokenWithExpireAndPostfix(value []byte) []byte {
+	exTime := c.expirationTimeBytes.Load().([]byte)
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(fastbytes.S2B(payloadBase64 + exTime))
+	mac.Write(append(value, c.postfix...))
+	mac.Write(exTime)
 	signature := mac.Sum(nil)
-
 	c.hmacPool.Put(mac)
 
-	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
+	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)+8))
+	token = append(token, exTime...)
+	token = append(token, getBytesFromLen(len(signature))...)
+	token = append(token, signature...)
+	token = append(token, value...)
 
-	return strings.Join([]string{payloadBase64, signatureBase64, exTime}, ".")
+	return token
 }
 
-func (c *Converter) newTokenWithPostfix(value []byte) string {
-	// Create the payload
-	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
-
-	// Create the signature
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(fastbytes.S2B(payloadBase64), c.postfix...))
-	signature := mac.Sum(nil)
-
-	c.hmacPool.Put(mac)
-
-	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
-
-	return strings.Join([]string{payloadBase64, signatureBase64}, ".")
-}
-
-func (c *Converter) newTokenWithExpireAndPostfix(value []byte) string {
-	// Create the payload
-	payloadBase64 := base64.RawURLEncoding.EncodeToString(value)
-	exTime := c.expirationTime.Load().(string)
-
-	// Create the signature
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(fastbytes.S2B(payloadBase64+exTime), c.postfix...))
-	signature := mac.Sum(nil)
-
-	c.hmacPool.Put(mac)
-
-	signatureBase64 := base64.RawURLEncoding.EncodeToString(signature)
-
-	return strings.Join([]string{payloadBase64, signatureBase64, exTime}, ".")
-}
-
-var (
-	InvalidTokenFormat = errors.New("Invalid token format")
-	InvalidSignature   = errors.New("Invalid signature")
-	TokenExpired       = errors.New("Token expired")
-)
-
-func (c *Converter) parseToken(token string) ([]byte, error) {
-	components := strings.Split(token, ".")
-
-	if len(components) != 2 {
+func (c *Converter) parseToken(token []byte) ([]byte, error) {
+	if len(token) < 3 {
 		return nil, InvalidTokenFormat
 	}
 
+	signatureLen, signatureSize := getLenAndSize(token)
+	offset := signatureSize + signatureLen
+	expectedSignature := token[signatureSize:offset]
+	payload := token[offset:]
+
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(fastbytes.S2B(components[0]))
-
-	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
-	if err != nil {
-		return nil, err
-	}
-
+	mac.Write(payload)
 	actualSignature := mac.Sum(nil)
-
 	c.hmacPool.Put(mac)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
 		return nil, InvalidSignature
 	}
 
-	return base64.RawURLEncoding.DecodeString(components[0])
+	return payload, nil
 }
 
-func (c *Converter) parseTokenWithExpire(token string) ([]byte, error) {
-	components := strings.Split(token, ".")
-
-	if len(components) != 3 {
+func (c *Converter) parseTokenWithExpire(token []byte) ([]byte, error) {
+	if len(token) < 11 {
 		return nil, InvalidTokenFormat
 	}
 
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(fastbytes.S2B(components[0] + components[2]))
-
-	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
-	if err != nil {
-		return nil, err
-	}
-
-	actualSignature := mac.Sum(nil)
-
-	c.hmacPool.Put(mac)
-
-	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, InvalidSignature
-	}
-
-	expiration, err := strconv.ParseInt(components[2], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.timeNow.Load() > expiration {
+	exTime := getInt64(token)
+	if exTime < c.expirationTime.Load() {
 		return nil, TokenExpired
 	}
 
-	return base64.RawURLEncoding.DecodeString(components[0])
-}
-
-func (c *Converter) parseTokenWithPostfix(token string) ([]byte, error) {
-	components := strings.Split(token, ".")
-
-	if len(components) != 2 {
-		return nil, InvalidTokenFormat
-	}
+	signatureLen, signatureSize := getLenAndSize(token[8:])
+	offset := signatureSize + signatureLen + 8
+	expectedSignature := token[signatureSize+8 : offset]
+	payload := token[offset:]
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append(fastbytes.S2B(components[0]), c.postfix...))
-
-	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
-	if err != nil {
-		return nil, err
-	}
-
+	mac.Write(payload)
+	mac.Write(token[:8])
 	actualSignature := mac.Sum(nil)
-
 	c.hmacPool.Put(mac)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
 		return nil, InvalidSignature
 	}
 
-	return base64.RawURLEncoding.DecodeString(components[0])
+	return payload, nil
 }
 
-func (c *Converter) parseTokenWithExpireAndPostfix(token string) ([]byte, error) {
-	components := strings.Split(token, ".")
-
-	if len(components) != 3 {
+func (c *Converter) parseTokenWithPostfix(token []byte) ([]byte, error) {
+	if len(token) < 3 {
 		return nil, InvalidTokenFormat
 	}
 
+	signatureLen, signatureSize := getLenAndSize(token)
+	offset := signatureSize + signatureLen
+	expectedSignature := token[signatureSize:offset]
+	payload := token[offset:]
+
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
-	mac.Write(append(fastbytes.S2B(components[0]+components[2]), c.postfix...))
-
-	expectedSignature, err := base64.RawURLEncoding.DecodeString(components[1])
-	if err != nil {
-		return nil, err
-	}
-
+	mac.Write(append(payload, c.postfix...))
 	actualSignature := mac.Sum(nil)
-
 	c.hmacPool.Put(mac)
 
 	if !hmac.Equal(expectedSignature, actualSignature) {
 		return nil, InvalidSignature
 	}
 
-	expiration, err := strconv.ParseInt(components[2], 10, 64)
-	if err != nil {
-		return nil, err
+	return payload, nil
+}
+
+func (c *Converter) parseTokenWithExpireAndPostfix(token []byte) ([]byte, error) {
+	if len(token) < 11 {
+		return nil, InvalidTokenFormat
 	}
 
-	if c.timeNow.Load() > expiration {
+	exTime := getInt64(token)
+	if exTime < c.expirationTime.Load() {
 		return nil, TokenExpired
 	}
 
-	return base64.RawURLEncoding.DecodeString(components[0])
+	signatureLen, signatureSize := getLenAndSize(token[8:])
+	offset := signatureSize + signatureLen + 8
+	expectedSignature := token[signatureSize+8 : offset]
+	payload := token[offset:]
+
+	mac := c.hmacPool.Get().(hash.Hash)
+	mac.Reset()
+	mac.Write(append(payload, c.postfix...))
+	mac.Write(token[:8])
+	actualSignature := mac.Sum(nil)
+	c.hmacPool.Put(mac)
+
+	if !hmac.Equal(expectedSignature, actualSignature) {
+		return nil, InvalidSignature
+	}
+
+	return payload, nil
 }
 
 // SecretKey returns the secret key used by the Converter.
@@ -339,5 +347,5 @@ func (c *Converter) Postfix() []byte {
 
 // ExpireTime returns the expiration time used by the Converter.
 func (c *Converter) ExpireTime() time.Duration {
-	return c.timeBeforeExpire
+	return time.Duration(c.timeBeforeExpire)
 }

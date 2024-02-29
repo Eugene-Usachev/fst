@@ -1,5 +1,7 @@
 github.com/Eugene-Usachev/fastbytes v1.0.5 h1:4WoylXTnTZPzzNU5+6ABSVGhGuswsrRu8xmPUPqi3k4=
 github.com/Eugene-Usachev/fastbytes v1.0.5/go.mod h1:uebQ2Hy3nWh0TnPLO7qM5pldS6Y+TwGqOuMhCOUtDUc=
+github.com/Eugene-Usachev/fastbytes v1.2.0 h1:ubLu225ZcxqEx6OJc0McFLOCAmE1j0x9b90wVQ+85XU=
+github.com/Eugene-Usachev/fastbytes v1.2.0/go.mod h1:uebQ2Hy3nWh0TnPLO7qM5pldS6Y+TwGqOuMhCOUtDUc=
 github.com/Eugene-Usachev/fst v1.0.3 h1:aPuDaKD+laRxVTrpSXlhWFTY0hMGrOAx9CxrZuDAzdo=
 github.com/Eugene-Usachev/fst v1.0.3/go.mod h1:VQp916HjHWkr+FTzn+kzjHJJT04IK+UxNvxGYVraBMg=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=

@@ -3,7 +3,7 @@ module benches
 go 1.20
 
 require (
-	github.com/Eugene-Usachev/fastbytes v1.0.5
+	github.com/Eugene-Usachev/fastbytes v1.2.0
 	github.com/Eugene-Usachev/fst v1.0.3
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-jose/go-jose/v3 v3.0.0
