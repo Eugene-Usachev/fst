@@ -33,7 +33,7 @@ First, you need to create a `Converter'. You can do it like this
 ```go
 converter := fst.NewConverter(&fst.ConverterConfig{
     SecretKey:   []byte(`secret`),
-    Postfix:     nil,
+    Postfix:     []byte(`postfix`),
     HashType:    sha256.New,
 })
 ```
@@ -58,9 +58,27 @@ converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
     Postfix:            nil,
     ExpirationTime:     time.Minute * 5,
     HashType:           sha256.New,
-    WithExpirationTime: true,
 })
 ```
+
+### Attention, please!
+For work with the browser and HTTP in general, use EncodedConverter!
+But if you don't need it, you can use Converter instead, as it is faster and more lightweight.
+
+To create EncodedConverter call NewEncodedConverter with ConverterConfig
+```go
+encodedConverter := converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+    SecretKey: []byte(`secret`),
+    HashType:  sha256.New,
+})
+
+converterWithExpirationTime := fst.NewEncodedConverter(&fst.ConverterConfig{
+    SecretKey:      []byte(`secret`),
+    ExpirationTime: time.Minute * 5,
+    HashType:       sha256.New,
+})
+```
+
 ## License
 
 The `fst` library is released under the MIT License.

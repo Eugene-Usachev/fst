@@ -1,4 +1,3 @@
-// Package fst is a high-performance, low-memory library for generating and parsing Fast Signed Tokens (FST). FST provides an alternative to JSON-based tokens and allows you to store any information that can be represented as []byte. You can use FST for the same purposes as JWT.
 package fst
 
 import (
@@ -22,38 +21,42 @@ var (
 
 // Converter represents a token converter that can generate and parse Fast Signed Tokens.
 //
-// Example:
+// # Be careful!
+//
+// Browsers cannot use this!
+// To work with the browser and HTTP in general, use EncodedConverter!
+//
+// # Example:
 //
 //	converter := fst.NewConverter(&fst.ConverterConfig{
-//		SecretKey: []byte(`secret`),
-//		HashType:  sha256.New,
-//	})
+//			SecretKey: []byte(`secret`),
+//			HashType:  sha256.New,
+//		})
 //
-//	token := converter.NewToken([]byte(`token`))
-//	fmt.Println(string(token)) // s♣�♠����▬]>¶4s\n'�a→Jtoken
+//		token := converter.NewToken([]byte(`token`))
+//		fmt.Println(string(token)) //s♣�♠����▬]>¶4s\n'�a→Jtoken
 //
-//	value, err := converter.ParseToken(token)
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//	fmt.Println(string(value)) // token
+//		value, err := converter.ParseToken(token)
+//		if err != nil {
+//			fmt.Println(err)
+//		}
+//		fmt.Println(string(value)) // token
 //
-//	converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
-//		SecretKey:          []byte(`secret`),
-//		Postfix:            nil,
-//		ExpirationTime:     time.Minute * 5,
-//		HashType:           sha256.New,
-//		WithExpirationTime: true,
-//	})
+//		converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
+//			SecretKey:      []byte(`secret`),
+//			Postfix:        nil,
+//			ExpirationTime: time.Minute * 5,
+//			HashType:       sha256.New,
+//		})
 //
-//	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
-//	fmt.Println(string(tokenWithEx)) // Something like 3d��I�j�token4n.<� ?�↨��♣u
+//		tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
+//		fmt.Println(string(tokenWithEx)) // Something like k:�e 6��Y�ٟ→%��v◄5t��+�v▬���<�+�token
 //
-//	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//	fmt.Println(string(value)) // token
+//		value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
+//		if err != nil {
+//			fmt.Println(err)
+//		}
+//		fmt.Println(string(value)) // token
 type Converter struct {
 	expirationTime      atomic.Int64
 	expirationTimeBytes atomic.Value
@@ -64,14 +67,6 @@ type Converter struct {
 
 	hmacPool sync.Pool
 	hashType hash.Hash
-
-	// NewToken creates a new FST with the provided value.
-	NewToken func([]byte) []byte
-
-	// ParseToken parses a FST and returns the value.
-	//
-	// It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
-	ParseToken func([]byte) ([]byte, error)
 }
 
 // ConverterConfig represents the configuration options for creating a new Converter.
@@ -80,7 +75,7 @@ type Converter struct {
 //
 // Postfix is the postfix to add to the token to more secure the token.
 //
-// ExpirationTime is the expiration time of the token. It is -1 by default and will not expire.
+// ExpirationTime is the expiration time of the token. It is zero by default and will not expire.
 //
 // HashType is the hash function used to sign the token.
 type ConverterConfig struct {
@@ -92,25 +87,19 @@ type ConverterConfig struct {
 	ExpirationTime time.Duration
 	// HashType is the hash function used to sign the token.
 	HashType func() hash.Hash
-
-	WithExpirationTime bool
 }
 
 // NewConverter creates a new instance of the Converter based on the provided fst.ConverterConfig.
 //
 // Example of the usage:
 //
-//		converter := fst.NewConverter(&fst.ConverterConfig{
-//	     SecretKey:      []byte(`secret`),
-//	     Postfix:        nil,
-//	     ExpirationTime: time.Minute * 5,
-//	     HashType:       sha256.New,
-//	     DisableLogs:    false,
-//	 })
+//	converter := fst.NewConverter(&fst.ConverterConfig{
+//	    SecretKey:      []byte(`secret`),
+//	    Postfix:        []byte(`postfix`),
+//	    ExpirationTime: time.Minute * 5,
+//	    HashType:       sha256.New,
+//	})
 func NewConverter(cfg *ConverterConfig) *Converter {
-	if !cfg.WithExpirationTime {
-		cfg.ExpirationTime = -1
-	}
 	if cfg.HashType == nil {
 		cfg.HashType = sha256.New
 	}
@@ -126,15 +115,7 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 		},
 	}
 
-	if cfg.ExpirationTime != -1 {
-		if cfg.Postfix == nil {
-			converter.NewToken = converter.newTokenWithExpire
-			converter.ParseToken = converter.parseTokenWithExpire
-		} else {
-			converter.NewToken = converter.newTokenWithExpireAndPostfix
-			converter.ParseToken = converter.parseTokenWithExpireAndPostfix
-		}
-
+	if cfg.ExpirationTime != 0 {
 		converter.expirationTime.Store(time.Now().Unix())
 		converter.expirationTimeBytes.Store(getBytesForInt64(time.Now().Unix()))
 		go func() {
@@ -146,185 +127,88 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 				converter.expirationTimeBytes.Store(getBytesForInt64(now))
 			}
 		}()
-	} else {
-		if cfg.Postfix == nil {
-			converter.NewToken = converter.newToken
-			converter.ParseToken = converter.parseToken
-		} else {
-			converter.NewToken = converter.newTokenWithPostfix
-			converter.ParseToken = converter.parseTokenWithPostfix
-		}
 	}
 
 	return converter
 }
 
-func (c *Converter) newToken(value []byte) []byte {
-	// Create the signature
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(value)
-	signature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)))
-	token = append(token, getBytesFromLen(len(signature))...)
-	token = append(token, signature...)
-	token = append(token, value...)
-
-	return token
-}
-
-func (c *Converter) newTokenWithExpire(value []byte) []byte {
-	exTime := c.expirationTimeBytes.Load().([]byte)
+// NewToken creates a new FST with the provided value. This method does not encode the token in base64.
+func (c *Converter) NewToken(value []byte) []byte {
+	var exTime []byte
+	isWithExpirationTime := c.timeBeforeExpire != 0
 
 	// Create the signature
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
 	mac.Write(value)
-	mac.Write(exTime)
+	if isWithExpirationTime {
+		exTime = c.expirationTimeBytes.Load().([]byte)
+		mac.Write(exTime)
+	}
+	if c.postfix != nil {
+		mac.Write(c.postfix)
+	}
 	signature := mac.Sum(nil)
 	c.hmacPool.Put(mac)
 
-	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)+8))
-	token = append(token, exTime...)
-	token = append(token, getBytesFromLen(len(signature))...)
-	token = append(token, signature...)
-	token = append(token, value...)
+	var token []byte
+
+	if !isWithExpirationTime {
+		token = make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)))
+		token = append(token, getBytesFromLen(len(signature))...)
+		token = append(token, signature...)
+		token = append(token, value...)
+	} else {
+		token = make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)+8))
+		token = append(token, exTime...)
+		token = append(token, getBytesFromLen(len(signature))...)
+		token = append(token, signature...)
+		token = append(token, value...)
+	}
 
 	return token
 }
 
-func (c *Converter) newTokenWithPostfix(value []byte) []byte {
-	// Create the signature
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(value, c.postfix...))
-	signature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)))
-	token = append(token, getBytesFromLen(len(signature))...)
-	token = append(token, signature...)
-	token = append(token, value...)
-
-	return token
-}
-
-func (c *Converter) newTokenWithExpireAndPostfix(value []byte) []byte {
-	exTime := c.expirationTimeBytes.Load().([]byte)
-
-	// Create the signature
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(value, c.postfix...))
-	mac.Write(exTime)
-	signature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	token := make([]byte, 0, len(value)+len(signature)+getSizeForLen(len(signature)+8))
-	token = append(token, exTime...)
-	token = append(token, getBytesFromLen(len(signature))...)
-	token = append(token, signature...)
-	token = append(token, value...)
-
-	return token
-}
-
-func (c *Converter) parseToken(token []byte) ([]byte, error) {
-	if len(token) < 3 {
+// ParseToken parses a FST and returns the value.
+// This method will use token to return the value, instead of copying.
+//
+// It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
+func (c *Converter) ParseToken(token []byte) ([]byte, error) {
+	if len(token) < 11 && (c.timeBeforeExpire == 0 && len(token) < 3) {
+		panic(len(token))
 		return nil, InvalidTokenFormat
 	}
 
-	signatureLen, signatureSize := getLenAndSize(token)
-	offset := signatureSize + signatureLen
-	expectedSignature := token[signatureSize:offset]
-	payload := token[offset:]
+	isWithExpirationTime := c.timeBeforeExpire != 0
+
+	var payloadOffset int
+	if isWithExpirationTime {
+		exTime := getInt64(token)
+		if exTime < c.expirationTime.Load() {
+			return nil, TokenExpired
+		}
+		payloadOffset = 8
+	}
+	signatureLen, signatureSize := getLenAndSize(token[payloadOffset:])
+	signatureOffset := payloadOffset + signatureSize
+	payloadOffset += signatureSize + signatureLen
+
+	if len(token) <= payloadOffset {
+		return nil, InvalidTokenFormat
+	}
+
+	expectedSignature := token[signatureOffset:payloadOffset]
+	payload := token[payloadOffset:]
 
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
 	mac.Write(payload)
-	actualSignature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, InvalidSignature
+	if isWithExpirationTime {
+		mac.Write(token[:8])
 	}
-
-	return payload, nil
-}
-
-func (c *Converter) parseTokenWithExpire(token []byte) ([]byte, error) {
-	if len(token) < 11 {
-		return nil, InvalidTokenFormat
+	if c.postfix != nil {
+		mac.Write(c.postfix)
 	}
-
-	exTime := getInt64(token)
-	if exTime < c.expirationTime.Load() {
-		return nil, TokenExpired
-	}
-
-	signatureLen, signatureSize := getLenAndSize(token[8:])
-	offset := signatureSize + signatureLen + 8
-	expectedSignature := token[signatureSize+8 : offset]
-	payload := token[offset:]
-
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(payload)
-	mac.Write(token[:8])
-	actualSignature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, InvalidSignature
-	}
-
-	return payload, nil
-}
-
-func (c *Converter) parseTokenWithPostfix(token []byte) ([]byte, error) {
-	if len(token) < 3 {
-		return nil, InvalidTokenFormat
-	}
-
-	signatureLen, signatureSize := getLenAndSize(token)
-	offset := signatureSize + signatureLen
-	expectedSignature := token[signatureSize:offset]
-	payload := token[offset:]
-
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(payload, c.postfix...))
-	actualSignature := mac.Sum(nil)
-	c.hmacPool.Put(mac)
-
-	if !hmac.Equal(expectedSignature, actualSignature) {
-		return nil, InvalidSignature
-	}
-
-	return payload, nil
-}
-
-func (c *Converter) parseTokenWithExpireAndPostfix(token []byte) ([]byte, error) {
-	if len(token) < 11 {
-		return nil, InvalidTokenFormat
-	}
-
-	exTime := getInt64(token)
-	if exTime < c.expirationTime.Load() {
-		return nil, TokenExpired
-	}
-
-	signatureLen, signatureSize := getLenAndSize(token[8:])
-	offset := signatureSize + signatureLen + 8
-	expectedSignature := token[signatureSize+8 : offset]
-	payload := token[offset:]
-
-	mac := c.hmacPool.Get().(hash.Hash)
-	mac.Reset()
-	mac.Write(append(payload, c.postfix...))
-	mac.Write(token[:8])
 	actualSignature := mac.Sum(nil)
 	c.hmacPool.Put(mac)
 

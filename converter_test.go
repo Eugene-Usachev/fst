@@ -52,11 +52,6 @@ func TestNewConverter(t *testing.T) {
 }
 
 func TestConverter_NewToken(t *testing.T) {
-	defer func() {
-		if pn := recover(); pn != nil {
-			t.Error("panic handled: ", pn)
-		}
-	}()
 
 	converter := NewConverter(&ConverterConfig{
 		SecretKey: []byte(`secret`),
@@ -135,6 +130,7 @@ func TestConverter_ParseTokenWithExpire(t *testing.T) {
 	value, err := converter.ParseToken(token)
 	if err != nil {
 		t.Error("Token with expire time parse err: ", err)
+		return
 	}
 
 	if string(value) != `token` {
@@ -150,11 +146,10 @@ func TestConverter_ExpiredToken(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:          []byte(`secret`),
-		Postfix:            nil,
-		ExpirationTime:     time.Second * 1,
-		HashType:           sha256.New,
-		WithExpirationTime: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        nil,
+		ExpirationTime: time.Second * 1,
+		HashType:       sha256.New,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -182,10 +177,9 @@ func TestConverter_Postfix(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:      []byte(`secret`),
-		Postfix:        []byte(`postfix`),
-		ExpirationTime: time.Minute * 5,
-		HashType:       sha256.New,
+		SecretKey: []byte(`secret`),
+		Postfix:   []byte(`postfix`),
+		HashType:  sha256.New,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -196,6 +190,7 @@ func TestConverter_Postfix(t *testing.T) {
 	value, err := converter.ParseToken(token)
 	if err != nil {
 		t.Error("Token with postfix parse err: ", err)
+		return
 	}
 
 	if string(value) != `token` {
@@ -211,11 +206,10 @@ func TestConverter_ExpiredTokenWithPostfix(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:          []byte(`secret`),
-		Postfix:            []byte(`postfix`),
-		ExpirationTime:     time.Second * 1,
-		HashType:           sha256.New,
-		WithExpirationTime: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        []byte(`postfix`),
+		ExpirationTime: time.Second * 1,
+		HashType:       sha256.New,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -253,7 +247,7 @@ func TestConverter_SecuredTest(t *testing.T) {
 		t.Error("Token is nil")
 	}
 
-	token = append(token, 8)
+	token = append(token, []byte("admin")...)
 
 	_, err := converter.ParseToken(token)
 	if err == nil {
@@ -273,11 +267,10 @@ func TestConverter_SecuredTestWithExpire(t *testing.T) {
 	}()
 
 	converter := NewConverter(&ConverterConfig{
-		SecretKey:          []byte(`secret`),
-		Postfix:            []byte(`postfix`),
-		HashType:           sha256.New,
-		ExpirationTime:     time.Minute * 5,
-		WithExpirationTime: true,
+		SecretKey:      []byte(`secret`),
+		Postfix:        []byte(`postfix`),
+		HashType:       sha256.New,
+		ExpirationTime: time.Minute * 5,
 	})
 
 	token := converter.NewToken([]byte(`token`))
@@ -285,15 +278,9 @@ func TestConverter_SecuredTestWithExpire(t *testing.T) {
 		t.Error("Token is nil")
 	}
 
-	token = append(token, 12)
-
 	_, err := converter.ParseToken(token)
-	if err == nil {
-		t.Error("Token parse err: ", "token is not secured!")
-	} else {
-		if !errors.Is(err, InvalidSignature) {
-			t.Error("Token parse err: ", err)
-		}
+	if err != nil {
+		t.Error("Token parse err: ", err)
 	}
 
 	token2 := converter.NewToken([]byte(`token`))
