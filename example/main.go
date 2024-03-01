@@ -14,7 +14,7 @@ func main() {
 	})
 
 	token := converter.NewToken([]byte(`token`))
-	fmt.Println(string(token)) //+XLyVq4BwH3MMLunFEboXU2OvtYAEgnlGsvwWXibAdG0dG9rZW4
+	fmt.Println(string(token)) //s♣�♠����▬]>¶4s\n'�a→Jtoken
 
 	value, err := converter.ParseToken(token)
 	if err != nil {
@@ -31,7 +31,7 @@ func main() {
 	})
 
 	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
-	fmt.Println(string(tokenWithEx)) // ˼�e+il7xQKjrk9p3CwFhDlqQziBfuqrEdgoKK-hKFmyCU0IdG9rZW4
+	fmt.Println(string(tokenWithEx)) // Something like 3d��I�j�token4n.<� ?�↨��♣u
 
 	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
 	if err != nil {

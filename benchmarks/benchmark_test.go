@@ -232,7 +232,7 @@ func BenchmarkBigStringParse_FST(b *testing.B) {
 	}
 }
 
-func BenchmarkUintGen_GoJose_ASYNC(b *testing.B) {
+func BenchmarkUintGen_GoJose_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -243,7 +243,7 @@ func BenchmarkUintGen_GoJose_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintGen_GolangJWT_ASYNC(b *testing.B) {
+func BenchmarkUintGen_GolangJWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -254,7 +254,7 @@ func BenchmarkUintGen_GolangJWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintGen_JWT_GO_ASYNC(b *testing.B) {
+func BenchmarkUintGen_JWT_GO_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -265,7 +265,7 @@ func BenchmarkUintGen_JWT_GO_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintGen_JWT_ASYNC(b *testing.B) {
+func BenchmarkUintGen_JWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -276,7 +276,7 @@ func BenchmarkUintGen_JWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintGen_FST_ASYNC(b *testing.B) {
+func BenchmarkUintGen_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
@@ -292,7 +292,7 @@ func BenchmarkUintGen_FST_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringGen_GoJose_ASYNC(b *testing.B) {
+func BenchmarkBigStringGen_GoJose_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -303,7 +303,7 @@ func BenchmarkBigStringGen_GoJose_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringGen_GolangJWT_ASYNC(b *testing.B) {
+func BenchmarkBigStringGen_GolangJWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -314,7 +314,7 @@ func BenchmarkBigStringGen_GolangJWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringGen_JWT_GO_ASYNC(b *testing.B) {
+func BenchmarkBigStringGen_JWT_GO_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -325,7 +325,7 @@ func BenchmarkBigStringGen_JWT_GO_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringGen_JWT_ASYNC(b *testing.B) {
+func BenchmarkBigStringGen_JWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -336,7 +336,7 @@ func BenchmarkBigStringGen_JWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringGen_FST_ASYNC(b *testing.B) {
+func BenchmarkBigStringGen_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
@@ -352,7 +352,7 @@ func BenchmarkBigStringGen_FST_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintParse_GoJose_ASYNC(b *testing.B) {
+func BenchmarkUintParse_GoJose_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -363,7 +363,7 @@ func BenchmarkUintParse_GoJose_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintParse_GolangJWT_ASYNC(b *testing.B) {
+func BenchmarkUintParse_GolangJWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -374,7 +374,7 @@ func BenchmarkUintParse_GolangJWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintParse_JWT_GO_ASYNC(b *testing.B) {
+func BenchmarkUintParse_JWT_GO_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -385,7 +385,7 @@ func BenchmarkUintParse_JWT_GO_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintParse_JWT_ASYNC(b *testing.B) {
+func BenchmarkUintParse_JWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -396,7 +396,7 @@ func BenchmarkUintParse_JWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkUintParse_FST_ASYNC(b *testing.B) {
+func BenchmarkUintParse_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
@@ -411,7 +411,7 @@ func BenchmarkUintParse_FST_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringParse_GoJose_ASYNC(b *testing.B) {
+func BenchmarkBigStringParse_GoJose_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -422,7 +422,7 @@ func BenchmarkBigStringParse_GoJose_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringParse_GolangJWT_ASYNC(b *testing.B) {
+func BenchmarkBigStringParse_GolangJWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -433,7 +433,7 @@ func BenchmarkBigStringParse_GolangJWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringParse_JWT_GO_ASYNC(b *testing.B) {
+func BenchmarkBigStringParse_JWT_GO_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -444,7 +444,7 @@ func BenchmarkBigStringParse_JWT_GO_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringParse_JWT_ASYNC(b *testing.B) {
+func BenchmarkBigStringParse_JWT_PARALLEL(b *testing.B) {
 	b.SetParallelism(128)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -455,7 +455,7 @@ func BenchmarkBigStringParse_JWT_ASYNC(b *testing.B) {
 	})
 }
 
-func BenchmarkBigStringParse_FST_ASYNC(b *testing.B) {
+func BenchmarkBigStringParse_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
