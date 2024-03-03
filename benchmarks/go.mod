@@ -13,6 +13,6 @@ require (
 )
 
 require (
-	github.com/Eugene-Usachev/fst v1.3.0 // indirect
+	github.com/Eugene-Usachev/fst v1.3.2 // indirect
 	golang.org/x/crypto v0.20.0 // indirect
 )

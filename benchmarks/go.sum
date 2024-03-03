@@ -6,6 +6,8 @@ github.com/Eugene-Usachev/fst v1.0.3 h1:aPuDaKD+laRxVTrpSXlhWFTY0hMGrOAx9CxrZuDA
 github.com/Eugene-Usachev/fst v1.0.3/go.mod h1:VQp916HjHWkr+FTzn+kzjHJJT04IK+UxNvxGYVraBMg=
 github.com/Eugene-Usachev/fst v1.3.0 h1:BucgIoJWf4l1ql35Wl5ttX6zFaxB1n0ddCJzeTR5tw8=
 github.com/Eugene-Usachev/fst v1.3.0/go.mod h1:VLbTj4+HnHH+SiqN16ZBhZQ2mh4ueLePXL7NxvtztrE=
+github.com/Eugene-Usachev/fst v1.3.2 h1:Fw1QW0Y7bRpEhyl5xhaZXfi+yNlXaF5ou+T8MJKy0S0=
+github.com/Eugene-Usachev/fst v1.3.2/go.mod h1:VLbTj4+HnHH+SiqN16ZBhZQ2mh4ueLePXL7NxvtztrE=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=

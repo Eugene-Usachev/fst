@@ -26,7 +26,15 @@ var (
 	fstConverterA = fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
+
+	fstEncodedConverterA = fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
 	fstConverterR = fst.NewConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+
+	fstEncodedConverterR = fst.NewEncodedConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
 	})
 
@@ -38,16 +46,18 @@ var (
 		str := b.String()
 		return str
 	}()
-	uintTokenV2, _      = v2.NewAccessToken(id, bkey1)
-	uintTokenV3, _      = v3.NewAccessToken(id)
-	uintTokenV4, _      = v4.NewAccessToken(id, bkey1)
-	uintTokenV5, _      = v5.NewAccessToken(id)
-	uintTokenFST        = fstConverterA.NewToken(U2B(id))
-	bigStringTokenV2, _ = v2.NewRefreshToken(bkey1, message1)
-	bigStringTokenV3, _ = v3.NewRefreshToken(message1)
-	bigStringTokenV4, _ = v4.NewRefreshToken(message1, bkey1)
-	bigStringTokenV5, _ = v5.NewRefreshToken(message1)
-	bigStringTokenFST   = fstConverterR.NewToken([]byte(message1))
+	uintTokenV2, _           = v2.NewAccessToken(id, bkey1)
+	uintTokenV3, _           = v3.NewAccessToken(id)
+	uintTokenV4, _           = v4.NewAccessToken(id, bkey1)
+	uintTokenV5, _           = v5.NewAccessToken(id)
+	uintTokenFST             = fstConverterA.NewToken(U2B(id))
+	uintTokenEncodedFST      = fstEncodedConverterA.NewToken(U2B(id))
+	bigStringTokenV2, _      = v2.NewRefreshToken(bkey1, message1)
+	bigStringTokenV3, _      = v3.NewRefreshToken(message1)
+	bigStringTokenV4, _      = v4.NewRefreshToken(message1, bkey1)
+	bigStringTokenV5, _      = v5.NewRefreshToken(message1)
+	bigStringTokenFST        = fstConverterR.NewToken([]byte(message1))
+	bigStringTokenEncodedFST = fstEncodedConverterR.NewToken([]byte(message1))
 )
 
 func BenchmarkUintGen_GoJose(b *testing.B) {
@@ -78,6 +88,20 @@ func BenchmarkUintGen_JWT(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		token, err := v3.NewAccessToken(id)
 		if err != nil && len(token) < 1 {
+		}
+	}
+}
+
+func BenchmarkUintGen_EncodedFST(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	bid := U2B(id)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		token := converter.NewToken(bid)
+		if len(token) < 1 {
 		}
 	}
 }
@@ -128,6 +152,20 @@ func BenchmarkBigStringGen_JWT(b *testing.B) {
 	}
 }
 
+func BenchmarkBigStringGen_EncodedFST(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	bmessage := []byte(message1)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		token := converter.NewToken(bmessage)
+		if len(token) < 1 {
+		}
+	}
+}
+
 func BenchmarkBigStringGen_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
@@ -174,6 +212,19 @@ func BenchmarkUintParse_JWT(b *testing.B) {
 	}
 }
 
+func BenchmarkUintParse_EncodedFST(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		token, err := converter.ParseToken(uintTokenEncodedFST)
+		if err != nil && len(token) < 1 {
+		}
+	}
+}
+
 func BenchmarkUintParse_FST(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
@@ -215,6 +266,19 @@ func BenchmarkBigStringParse_JWT(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		pass, err := v3.ParseRefreshToken(bigStringTokenV3)
 		if err != nil && len(pass) < 1 {
+		}
+	}
+}
+
+func BenchmarkBigStringParse_EncodedFST(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		token, err := converter.ParseToken(bigStringTokenEncodedFST)
+		if err != nil && len(token) < 1 {
 		}
 	}
 }
@@ -271,6 +335,22 @@ func BenchmarkUintGen_JWT_PARALLEL(b *testing.B) {
 		for pb.Next() {
 			token, err := v3.NewAccessToken(id)
 			if err != nil && len(token) < 1 {
+			}
+		}
+	})
+}
+
+func BenchmarkUintGen_EncodedFST_PARALLEL(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	bid := U2B(id)
+	b.ResetTimer()
+	b.SetParallelism(128)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			token := converter.NewToken(bid)
+			if len(token) < 1 {
 			}
 		}
 	})
@@ -336,6 +416,22 @@ func BenchmarkBigStringGen_JWT_PARALLEL(b *testing.B) {
 	})
 }
 
+func BenchmarkBigStringGen_FST_EncodedPARALLEL(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	bmessage := []byte(message1)
+	b.ResetTimer()
+	b.SetParallelism(128)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			token := converter.NewToken(bmessage)
+			if len(token) < 1 {
+			}
+		}
+	})
+}
+
 func BenchmarkBigStringGen_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
@@ -396,6 +492,21 @@ func BenchmarkUintParse_JWT_PARALLEL(b *testing.B) {
 	})
 }
 
+func BenchmarkUintParse_EncodedFST_PARALLEL(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	b.ResetTimer()
+	b.SetParallelism(128)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			token, err := converter.ParseToken(uintTokenEncodedFST)
+			if err != nil && len(token) < 1 {
+			}
+		}
+	})
+}
+
 func BenchmarkUintParse_FST_PARALLEL(b *testing.B) {
 	converter := fst.NewConverter(&fst.ConverterConfig{
 		SecretKey: bkey1,
@@ -450,6 +561,21 @@ func BenchmarkBigStringParse_JWT_PARALLEL(b *testing.B) {
 		for pb.Next() {
 			pass, err := v3.ParseRefreshToken(bigStringTokenV3)
 			if err != nil && len(pass) < 1 {
+			}
+		}
+	})
+}
+
+func BenchmarkBigStringParse_EncodedFST_PARALLEL(b *testing.B) {
+	converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+		SecretKey: bkey1,
+	})
+	b.ResetTimer()
+	b.SetParallelism(128)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			token, err := converter.ParseToken(bigStringTokenEncodedFST)
+			if err != nil && len(token) < 1 {
 			}
 		}
 	})
