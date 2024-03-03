@@ -1,6 +1,8 @@
 package fst
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+)
 
 // EncodedConverter represents a token converter that can generate and parse Fast Signed Tokens that are encoded.
 //

@@ -123,7 +123,7 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 			for {
 				time.Sleep(1 * time.Second)
 				now = time.Now().Unix()
-				converter.expirationTime.Store(now)
+				converter.expirationTime.Store(now - converter.timeBeforeExpire)
 				converter.expirationTimeBytes.Store(getBytesForInt64(now))
 			}
 		}()
