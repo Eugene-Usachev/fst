@@ -62,8 +62,8 @@ func NewEncodedConverter(cfg *ConverterConfig) *EncodedConverter {
 }
 
 // NewToken creates a new FST with the provided value. This method encodes the token in base64.
-func (c *EncodedConverter) NewToken(id []byte) string {
-	return base64.URLEncoding.EncodeToString(c.converter.NewToken(id))
+func (c *EncodedConverter) NewToken(value []byte) string {
+	return base64.URLEncoding.EncodeToString(c.converter.NewToken(value))
 }
 
 // ParseToken parses a FST and returns the value.
