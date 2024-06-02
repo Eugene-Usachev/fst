@@ -67,7 +67,7 @@ But if you don't need it, you can use Converter instead, as it is faster and mor
 
 To create EncodedConverter call NewEncodedConverter with ConverterConfig
 ```go
-encodedConverter := converter := fst.NewEncodedConverter(&fst.ConverterConfig{
+encodedConverter := fst.NewEncodedConverter(&fst.ConverterConfig{
     SecretKey: []byte(`secret`),
     HashType:  sha256.New,
 })
