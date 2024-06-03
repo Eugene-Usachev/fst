@@ -175,7 +175,6 @@ func (c *Converter) NewToken(value []byte) []byte {
 // It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
 func (c *Converter) ParseToken(token []byte) ([]byte, error) {
 	if len(token) < 11 && (c.timeBeforeExpire == 0 && len(token) < 3) {
-		panic(len(token))
 		return nil, InvalidTokenFormat
 	}
 
