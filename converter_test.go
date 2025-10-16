@@ -1,6 +1,7 @@
 package fst
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"testing"
@@ -51,44 +52,42 @@ func TestNewConverter(t *testing.T) {
 	}
 }
 
-func TestConverter_NewToken(t *testing.T) {
+func testWithSize(t *testing.T, converter *Converter, size int) {
+	value := make([]byte, size)
+	b := []byte{'T', 'O', 'K', 'E', 'N'}
 
-	converter := NewConverter(&ConverterConfig{
-		SecretKey: []byte(`secret`),
-	})
-
-	token := converter.NewToken([]byte(`token`))
-	if len(token) == 0 {
-		t.Error("Token is nil")
+	for i := range value {
+		value[i] = b[i%len(b)]
 	}
-}
 
-func TestConverter_ParseToken(t *testing.T) {
-	defer func() {
-		if pn := recover(); pn != nil {
-			t.Error("panic handled: ", pn)
-		}
-	}()
-
-	converter := NewConverter(&ConverterConfig{
-		SecretKey: []byte(`secret`),
-	})
-
-	token := converter.NewToken([]byte(`token`))
+	token := converter.NewToken(value)
 	if len(token) == 0 {
 		t.Error("Token is nil")
 	}
 
-	value, err := converter.ParseToken(token)
+	parsedValue, err := converter.ParseToken(token)
 	if err != nil {
 		t.Error("Token parse err: ", err)
 	}
-	if string(value) != `token` {
-		t.Error("Token parse err: ", string(value), " != ", `token`)
+
+	if !bytes.Equal(value, parsedValue) {
+		t.Error("Token parse err: ", string(value), " != ", string(parsedValue))
 	}
 }
 
-func TestConverter_NewTokenWithExpire(t *testing.T) {
+func TestConverter(t *testing.T) {
+	defer func() {
+		if pn := recover(); pn != nil {
+			t.Error("panic handled: ", pn)
+		}
+	}()
+
+	testWithSize(t, NewConverter(&ConverterConfig{SecretKey: []byte("secret")}), 5)
+	testWithSize(t, NewConverter(&ConverterConfig{SecretKey: []byte("secret")}), 280)
+	testWithSize(t, NewConverter(&ConverterConfig{SecretKey: []byte("secret")}), 100000)
+}
+
+func TestConverterWithExpire(t *testing.T) {
 	defer func() {
 		if pn := recover(); pn != nil {
 			t.Error("panic handled: ", pn)
@@ -102,40 +101,9 @@ func TestConverter_NewTokenWithExpire(t *testing.T) {
 		HashType:       sha256.New,
 	})
 
-	token := converter.NewToken([]byte(`token`))
-	if len(token) == 0 {
-		t.Error("Token with expire time is nil")
-	}
-}
-
-func TestConverter_ParseTokenWithExpire(t *testing.T) {
-	defer func() {
-		if pn := recover(); pn != nil {
-			t.Error("panic handled: ", pn)
-		}
-	}()
-
-	converter := NewConverter(&ConverterConfig{
-		SecretKey:      []byte(`secret`),
-		Postfix:        nil,
-		ExpirationTime: time.Minute * 5,
-		HashType:       sha256.New,
-	})
-
-	token := converter.NewToken([]byte(`token`))
-	if len(token) == 0 {
-		t.Error("Token with expire time is nil")
-	}
-
-	value, err := converter.ParseToken(token)
-	if err != nil {
-		t.Error("Token with expire time parse err: ", err)
-		return
-	}
-
-	if string(value) != `token` {
-		t.Error("Token with expire time parse err: ", string(value), " != ", `token`)
-	}
+	testWithSize(t, converter, 5)
+	testWithSize(t, converter, 280)
+	testWithSize(t, converter, 100000)
 }
 
 func TestConverter_ExpiredToken(t *testing.T) {

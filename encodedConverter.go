@@ -75,5 +75,6 @@ func (c *EncodedConverter) ParseToken(token string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return c.converter.ParseToken(decodedToken)
 }

@@ -5,18 +5,22 @@ import (
 	"crypto/sha256"
 	"errors"
 	"hash"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+// Token layout:
+// [8 bytes expiration?] [N bytes signatureLen] [signature] [payload]
+
 var (
 	// InvalidTokenFormat means that the token is malformed.
-	InvalidTokenFormat = errors.New("Invalid token format")
+	InvalidTokenFormat = errors.New("fst: invalid token format")
 	// InvalidSignature means that the token is forged.
-	InvalidSignature = errors.New("Invalid signature")
+	InvalidSignature = errors.New("fst: invalid signature")
 	// TokenExpired means that the token is expired.
-	TokenExpired = errors.New("Token expired")
+	TokenExpired = errors.New("fst: token expired")
 )
 
 // Converter represents a token converter that can generate and parse Fast Signed Tokens.
@@ -103,6 +107,7 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 	if cfg.HashType == nil {
 		cfg.HashType = sha256.New
 	}
+
 	converter := &Converter{
 		secretKey:        cfg.SecretKey,
 		postfix:          cfg.Postfix,
@@ -115,19 +120,31 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 		},
 	}
 
+	var shouldCloseGoroutine = &atomic.Bool{}
+
+	shouldCloseGoroutine.Store(cfg.ExpirationTime == 0)
+
 	if cfg.ExpirationTime != 0 {
 		converter.expirationTime.Store(time.Now().Unix())
 		converter.expirationTimeBytes.Store(getBytesForInt64(time.Now().Unix()))
+
 		go func() {
 			var now int64
-			for {
+
+			for !shouldCloseGoroutine.Load() {
 				time.Sleep(1 * time.Second)
+
 				now = time.Now().Unix()
+
 				converter.expirationTime.Store(now - converter.timeBeforeExpire)
 				converter.expirationTimeBytes.Store(getBytesForInt64(now))
 			}
 		}()
 	}
+
+	runtime.AddCleanup(converter, func(shouldCloseGoroutine *atomic.Bool) {
+		shouldCloseGoroutine.Store(true)
+	}, shouldCloseGoroutine)
 
 	return converter
 }
@@ -141,14 +158,20 @@ func (c *Converter) NewToken(value []byte) []byte {
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
 	mac.Write(value)
+
 	if isWithExpirationTime {
 		exTime = c.expirationTimeBytes.Load().([]byte)
+
 		mac.Write(exTime)
 	}
+
 	if c.postfix != nil {
 		mac.Write(c.postfix)
 	}
-	signature := mac.Sum(nil)
+
+	signature := make([]byte, 0, mac.Size())
+	signature = mac.Sum(signature)
+
 	c.hmacPool.Put(mac)
 
 	var token []byte
@@ -170,7 +193,7 @@ func (c *Converter) NewToken(value []byte) []byte {
 }
 
 // ParseToken parses a FST and returns the value.
-// This method will use token to return the value, instead of copying.
+// This method will use token to return the value instead of copying.
 //
 // It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
 func (c *Converter) ParseToken(token []byte) ([]byte, error) {
@@ -183,9 +206,11 @@ func (c *Converter) ParseToken(token []byte) ([]byte, error) {
 	var payloadOffset int
 	if isWithExpirationTime {
 		exTime := getInt64(token)
+
 		if exTime < c.expirationTime.Load() {
 			return nil, TokenExpired
 		}
+
 		payloadOffset = 8
 	}
 	signatureLen, signatureSize := getLenAndSize(token[payloadOffset:])
@@ -202,12 +227,15 @@ func (c *Converter) ParseToken(token []byte) ([]byte, error) {
 	mac := c.hmacPool.Get().(hash.Hash)
 	mac.Reset()
 	mac.Write(payload)
+
 	if isWithExpirationTime {
 		mac.Write(token[:8])
 	}
+
 	if c.postfix != nil {
 		mac.Write(c.postfix)
 	}
+
 	actualSignature := mac.Sum(nil)
 	c.hmacPool.Put(mac)
 
@@ -228,7 +256,7 @@ func (c *Converter) Postfix() []byte {
 	return c.postfix
 }
 
-// ExpireTime returns the expiration time used by the Converter.
-func (c *Converter) ExpireTime() time.Duration {
+// ExpirationTime returns the expiration time used by the Converter.
+func (c *Converter) ExpirationTime() time.Duration {
 	return time.Duration(c.timeBeforeExpire)
 }
