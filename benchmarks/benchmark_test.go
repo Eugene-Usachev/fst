@@ -1,14 +1,16 @@
 package benchmarks
 
 import (
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/Eugene-Usachev/fst"
+
 	v5 "benches/goJose"
 	v4 "benches/golangJwt"
 	v3 "benches/jwt"
 	v2 "benches/jwt-go"
-	"github.com/Eugene-Usachev/fst"
-	"strconv"
-	"strings"
-	"testing"
 )
 
 var (

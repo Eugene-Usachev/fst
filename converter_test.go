@@ -62,16 +62,16 @@ func testWithSize(t *testing.T, converter *Converter, size int) {
 
 	token := converter.NewToken(value)
 	if len(token) == 0 {
-		t.Error("Token is nil")
+		t.Fatal("Token is nil")
 	}
 
 	parsedValue, err := converter.ParseToken(token)
 	if err != nil {
-		t.Error("Token parse err: ", err)
+		t.Fatal("Token parse err: ", err)
 	}
 
 	if !bytes.Equal(value, parsedValue) {
-		t.Error("Token parse err: ", string(value), " != ", string(parsedValue))
+		t.Fatal("Token parse err: ", string(value), " != ", string(parsedValue))
 	}
 }
 

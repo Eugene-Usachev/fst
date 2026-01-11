@@ -5,9 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"hash"
-	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -24,6 +22,7 @@ var (
 )
 
 // Converter represents a token converter that can generate and parse Fast Signed Tokens.
+// Converter is a pointer-wrapper, so you don't need to use `*Converter`.
 //
 // # Be careful!
 //
@@ -33,38 +32,36 @@ var (
 // # Example:
 //
 //	converter := fst.NewConverter(&fst.ConverterConfig{
-//			SecretKey: []byte(`secret`),
-//			HashType:  sha256.New,
-//		})
+//		SecretKey: []byte(`secret`),
+//		HashType:  sha256.New,
+//	})
 //
-//		token := converter.NewToken([]byte(`token`))
-//		fmt.Println(string(token)) //s♣�♠����▬]>¶4s\n'�a→Jtoken
+//	token := converter.NewToken([]byte(`token`))
+//	fmt.Println(string(token)) //s♣�♠����▬]>¶4s\n'�a→Jtoken
 //
-//		value, err := converter.ParseToken(token)
-//		if err != nil {
-//			fmt.Println(err)
-//		}
-//		fmt.Println(string(value)) // token
+//	value, err := converter.ParseToken(token)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(string(value)) // token
 //
-//		converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
-//			SecretKey:      []byte(`secret`),
-//			Postfix:        nil,
-//			ExpirationTime: time.Minute * 5,
-//			HashType:       sha256.New,
-//		})
+//	converterWithExpirationTime := fst.NewConverter(&fst.ConverterConfig{
+//		SecretKey:      []byte(`secret`),
+//		Postfix:        nil,
+//		ExpirationTime: time.Minute * 5,
+//		HashType:       sha256.New,
+//	})
 //
-//		tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
-//		fmt.Println(string(tokenWithEx)) // Something like k:�e 6��Y�ٟ→%��v◄5t��+�v▬���<�+�token
+//	tokenWithEx := converterWithExpirationTime.NewToken([]byte(`token`))
+//	fmt.Println(string(tokenWithEx)) // Something like k:�e 6��Y�ٟ→%��v◄5t��+�v▬���<�+�token
 //
-//		value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
-//		if err != nil {
-//			fmt.Println(err)
-//		}
-//		fmt.Println(string(value)) // token
+//	value, err = converterWithExpirationTime.ParseToken(tokenWithEx)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(string(value)) // token
 type Converter struct {
-	expirationTime      atomic.Int64
-	expirationTimeBytes atomic.Value
-	timeBeforeExpire    int64
+	timeBeforeExpire int64
 
 	secretKey []byte
 	postfix   []byte
@@ -95,14 +92,7 @@ type ConverterConfig struct {
 
 // NewConverter creates a new instance of the Converter based on the provided fst.ConverterConfig.
 //
-// Example of the usage:
-//
-//	converter := fst.NewConverter(&fst.ConverterConfig{
-//	    SecretKey:      []byte(`secret`),
-//	    Postfix:        []byte(`postfix`),
-//	    ExpirationTime: time.Minute * 5,
-//	    HashType:       sha256.New,
-//	})
+// An example of usage can be found at Converter.
 func NewConverter(cfg *ConverterConfig) *Converter {
 	if cfg.HashType == nil {
 		cfg.HashType = sha256.New
@@ -120,32 +110,6 @@ func NewConverter(cfg *ConverterConfig) *Converter {
 		},
 	}
 
-	var shouldCloseGoroutine = &atomic.Bool{}
-
-	shouldCloseGoroutine.Store(cfg.ExpirationTime == 0)
-
-	if cfg.ExpirationTime != 0 {
-		converter.expirationTime.Store(time.Now().Unix())
-		converter.expirationTimeBytes.Store(getBytesForInt64(time.Now().Unix()))
-
-		go func() {
-			var now int64
-
-			for !shouldCloseGoroutine.Load() {
-				time.Sleep(1 * time.Second)
-
-				now = time.Now().Unix()
-
-				converter.expirationTime.Store(now - converter.timeBeforeExpire)
-				converter.expirationTimeBytes.Store(getBytesForInt64(now))
-			}
-		}()
-	}
-
-	runtime.AddCleanup(converter, func(shouldCloseGoroutine *atomic.Bool) {
-		shouldCloseGoroutine.Store(true)
-	}, shouldCloseGoroutine)
-
 	return converter
 }
 
@@ -160,8 +124,7 @@ func (c *Converter) NewToken(value []byte) []byte {
 	mac.Write(value)
 
 	if isWithExpirationTime {
-		exTime = c.expirationTimeBytes.Load().([]byte)
-
+		exTime = getBytesForInt64(time.Now().Unix())
 		mac.Write(exTime)
 	}
 
@@ -197,8 +160,14 @@ func (c *Converter) NewToken(value []byte) []byte {
 //
 // It can return errors like InvalidTokenFormat, InvalidSignature, TokenExpired.
 func (c *Converter) ParseToken(token []byte) ([]byte, error) {
-	if len(token) < 11 && (c.timeBeforeExpire == 0 && len(token) < 3) {
-		return nil, InvalidTokenFormat
+	if len(token) < 11 {
+		if c.timeBeforeExpire == 0 {
+			if len(token) < 3 {
+				return nil, InvalidTokenFormat
+			}
+		} else {
+			return nil, InvalidTokenFormat
+		}
 	}
 
 	isWithExpirationTime := c.timeBeforeExpire != 0
@@ -207,7 +176,7 @@ func (c *Converter) ParseToken(token []byte) ([]byte, error) {
 	if isWithExpirationTime {
 		exTime := getInt64(token)
 
-		if exTime < c.expirationTime.Load() {
+		if exTime < time.Now().Unix()-c.timeBeforeExpire {
 			return nil, TokenExpired
 		}
 
